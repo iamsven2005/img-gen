@@ -1,151 +1,203 @@
-/* eslint-disable @next/next/no-img-element */
-"use client";
+'use client'
 
-import {
-  AttachmentIcon,
-  BotIcon,
-  UserIcon,
-  VercelIcon,
-} from "@/components/icons";
-import { useChat } from "ai/react";
-import { DragEvent, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { toast } from "sonner";
-import Link from "next/link";
-import { Markdown } from "@/components/markdown";
+import { AttachmentIcon, BotIcon, UserIcon } from "@/components/icons"
+import { useChat } from "ai/react"
+import { DragEvent, useEffect, useRef, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { toast } from "sonner"
+import { Markdown } from "@/components/markdown"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { useTheme } from "next-themes"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MicIcon, Moon, Sun, X } from "lucide-react"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 const getTextFromDataUrl = (dataUrl: string) => {
-  const base64 = dataUrl.split(",")[1];
-  return window.atob(base64);
-};
+  const base64 = dataUrl.split(",")[1]
+  return window.atob(base64)
+}
+function downloadYAMLFile(content: any) {
+  // Use regex to extract the content within a YAML code block
+  const match = content.match(/```yaml\s([\s\S]*?)\s```/);
+
+  if (match && match[1]) {
+    const yamlContent = match[1].trim(); // Extract and trim the YAML content
+    const blob = new Blob([yamlContent], { type: "text/yaml" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "download.yaml";
+    link.click();
+    URL.revokeObjectURL(url); // Clean up URL after download
+  } else {
+    toast.error("No valid YAML content found.");
+  }
+}
+
 
 function TextFilePreview({ file }: { file: File }) {
-  const [content, setContent] = useState<string>("");
+  const [content, setContent] = useState<string>("")
 
   useEffect(() => {
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = (e) => {
-      const text = e.target?.result;
-      setContent(typeof text === "string" ? text.slice(0, 100) : "");
-    };
-    reader.readAsText(file);
-  }, [file]);
+      const text = e.target?.result
+      setContent(typeof text === "string" ? text.slice(0, 100) : "")
+    }
+    reader.readAsText(file)
+  }, [file])
 
   return (
     <div>
       {content}
       {content.length >= 100 && "..."}
     </div>
-  );
+  )
 }
 
-export default function Home() {
-  const { messages, input, handleSubmit, handleInputChange, isLoading } =
-    useChat({
-      onError: () =>
-        toast.error("You've been rate limited, please try again later!"),
-    });
+export default function ChatInterface() {
+  const { messages, input, handleSubmit, handleInputChange, isLoading } = useChat({
+    onError: () => toast.error("You've been rate limited, please try again later!"),
+  })
+  const { setTheme } = useTheme()
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
-  const [files, setFiles] = useState<FileList | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null); // Reference for the hidden file input
-  const [isDragging, setIsDragging] = useState(false);
+  const getTextFromDataUrl = (dataUrl: string) => {
+    try {
+      const text = atob(dataUrl.split(',')[1])
+      return text.length > 100 ? text.slice(0, 100) + '...' : text
+    } catch {
+      return 'Unable to decode text'
+    }
+  }
+  const [files, setFiles] = useState<FileList | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   const handlePaste = (event: React.ClipboardEvent) => {
-    const items = event.clipboardData?.items;
+    const items = event.clipboardData?.items
 
     if (items) {
       const files = Array.from(items)
         .map((item) => item.getAsFile())
-        .filter((file): file is File => file !== null);
+        .filter((file): file is File => file !== null)
 
       if (files.length > 0) {
         const validFiles = files.filter(
-          (file) =>
-            file.type.startsWith("image/") || file.type.startsWith("text/")
-        );
+          (file) => file.type.startsWith("image/") || file.type.startsWith("text/")
+        )
 
         if (validFiles.length === files.length) {
-          const dataTransfer = new DataTransfer();
-          validFiles.forEach((file) => dataTransfer.items.add(file));
-          setFiles(dataTransfer.files);
+          const dataTransfer = new DataTransfer()
+          validFiles.forEach((file) => dataTransfer.items.add(file))
+          setFiles(dataTransfer.files)
         } else {
-          toast.error("Only image and text files are allowed");
+          toast.error("Only image and text files are allowed")
         }
       }
     }
-  };
+  }
 
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragging(true);
-  };
+    event.preventDefault()
+    setIsDragging(true)
+  }
 
   const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragging(false);
-  };
+    event.preventDefault()
+    setIsDragging(false)
+  }
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const droppedFiles = event.dataTransfer.files;
-    const droppedFilesArray = Array.from(droppedFiles);
+    event.preventDefault()
+    const droppedFiles = event.dataTransfer.files
+    const droppedFilesArray = Array.from(droppedFiles)
     if (droppedFilesArray.length > 0) {
       const validFiles = droppedFilesArray.filter(
-        (file) =>
-          file.type.startsWith("image/") || file.type.startsWith("text/")
-      );
+        (file) => file.type.startsWith("image/") || file.type.startsWith("text/")
+      )
 
       if (validFiles.length === droppedFilesArray.length) {
-        const dataTransfer = new DataTransfer();
-        validFiles.forEach((file) => dataTransfer.items.add(file));
-        setFiles(dataTransfer.files);
+        const dataTransfer = new DataTransfer()
+        validFiles.forEach((file) => dataTransfer.items.add(file))
+        setFiles(dataTransfer.files)
       } else {
-        toast.error("Only image and text files are allowed!");
+        toast.error("Only image and text files are allowed!")
       }
 
-      setFiles(droppedFiles);
+      setFiles(droppedFiles)
     }
-    setIsDragging(false);
-  };
+    setIsDragging(false)
+  }
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollToBottom()
+  }, [messages])
 
-  // Function to handle file selection via the upload button
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
+    fileInputRef.current?.click()
+  }
 
-  // Function to handle files selected from the file dialog
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files;
+    const selectedFiles = event.target.files
     if (selectedFiles) {
       const validFiles = Array.from(selectedFiles).filter(
-        (file) =>
-          file.type.startsWith("image/") || file.type.startsWith("text/")
-      );
+        (file) => file.type.startsWith("image/") || file.type.startsWith("text/")
+      )
 
       if (validFiles.length === selectedFiles.length) {
-        const dataTransfer = new DataTransfer();
-        validFiles.forEach((file) => dataTransfer.items.add(file));
-        setFiles(dataTransfer.files);
+        const dataTransfer = new DataTransfer()
+        validFiles.forEach((file) => dataTransfer.items.add(file))
+        setFiles(dataTransfer.files)
       } else {
-        toast.error("Only image and text files are allowed");
+        toast.error("Only image and text files are allowed")
       }
     }
-  };
+  }
 
+
+
+  const [isRecognizing, setIsRecognizing] = useState(false);
+
+  // Initialize Speech Recognition
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+  const startSpeechRecognition = () => {
+    if (!recognition) {
+      toast.error("Speech Recognition not supported in this browser.");
+      return;
+    }
+
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsRecognizing(true);
+    recognition.onend = () => setIsRecognizing(false);
+    recognition.onerror = (event) => {
+      toast.error(`Error occurred in speech recognition: ${event.error}`);
+      setIsRecognizing(false);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      handleInputChange({ target: { value: input + " " + transcript } }); // Append transcript to input
+    };
+
+    recognition.start();
+  };
   return (
     <div
-      className="flex flex-row justify-center pb-20 h-dvh bg-white dark:bg-zinc-900"
+      className="flex flex-col justify-between min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -153,187 +205,216 @@ export default function Home() {
       <AnimatePresence>
         {isDragging && (
           <motion.div
-            className="fixed pointer-events-none dark:bg-zinc-900/90 h-dvh w-dvw z-10 flex flex-row justify-center items-center flex flex-col gap-1 bg-zinc-100/90"
+            className="fixed inset-0 pointer-events-none bg-gray-100/90 dark:bg-gray-800/90 z-50 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div>Drag and drop files here</div>
-            <div className="text-sm dark:text-zinc-400 text-zinc-500">
-              {"(images and text)"}
+            <div className="text-center">
+              <div className="text-xl font-semibold">Drag and drop files here</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                (images and text)
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="flex flex-col justify-between gap-4">
+      <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon">
+          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setTheme("light")}>
+          Light
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("dark")}>
+          Dark
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("system")}>
+          System
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length > 0 ? (
-          <div className="flex flex-col gap-2 h-full w-dvw items-center overflow-y-scroll">
-            {messages.map((message, index) => (
-              <motion.div
-                key={message.id}
-                className={`flex flex-row gap-2 px-4 w-full md:w-[500px] md:px-0 ${
-                  index === 0 ? "pt-20" : ""
-                }`}
-                initial={{ y: 5, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-              >
-                <div className="size-[24px] flex flex-col justify-center items-center flex-shrink-0 text-zinc-400">
-                  {message.role === "assistant" ? <BotIcon /> : <UserIcon />}
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="text-zinc-800 dark:text-zinc-300 flex flex-col gap-4">
-                    <Markdown>{message.content}</Markdown>
-                  </div>
-                  <div className="flex flex-row gap-2">
-                    {message.experimental_attachments?.map((attachment) =>
-                      attachment.contentType?.startsWith("image") ? (
-                        <img
-                          className="rounded-md w-40 mb-3"
-                          key={attachment.name}
-                          src={attachment.url}
-                          alt={attachment.name}
-                        />
-                      ) : attachment.contentType?.startsWith("text") ? (
-                        <div className="text-xs w-40 h-24 overflow-hidden text-zinc-400 border p-2 rounded-md dark:bg-zinc-800 dark:border-zinc-700 mb-3">
-                          {getTextFromDataUrl(attachment.url)}
-                        </div>
-                      ) : null
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-
-            {isLoading &&
-              messages[messages.length - 1].role !== "assistant" && (
-                <div className="flex flex-row gap-2 px-4 w-full md:w-[500px] md:px-0">
-                  <div className="size-[24px] flex flex-col justify-center items-center flex-shrink-0 text-zinc-400">
-                    <BotIcon />
-                  </div>
-                  <div className="flex flex-col gap-1 text-zinc-400">
-                    <div>hmm...</div>
-                  </div>
-                </div>
-              )}
-
-            <div ref={messagesEndRef} />
-          </div>
-        ) : (
-          <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
-            <div className="border rounded-lg p-6 flex flex-col gap-4 text-zinc-500 text-sm dark:text-zinc-400 dark:border-zinc-700">
-              <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
-                <VercelIcon />
-                <span>+</span>
-                <AttachmentIcon />
-              </p>
-              <p>
-                The useChat hook supports sending attachments along with
-                messages as well as rendering previews on the client. This can
-                be useful for building applications that involve sending images,
-                files, and other media content to the AI provider.
-              </p>
-              <p>
-                {" "}
-                Learn more about the{" "}
-                <Link
-                  className="text-blue-500 dark:text-blue-400"
-                  href="https://sdk.vercel.ai/docs/ai-sdk-ui/chatbot#attachments-experimental"
-                  target="_blank"
-                >
-                  useChat{" "}
-                </Link>
-                hook from Vercel AI SDK.
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        <form
-          className="flex flex-col gap-2 relative items-center"
-          onSubmit={(event) => {
-            const options = files ? { experimental_attachments: files } : {};
-            handleSubmit(event, options);
-            setFiles(null);
-          }}
-        >
-          <AnimatePresence>
-            {files && files.length > 0 && (
-              <div className="flex flex-row gap-2 absolute bottom-12 px-4 w-full md:w-[500px] md:px-0">
-                {Array.from(files).map((file) =>
-                  file.type.startsWith("image") ? (
-                    <div key={file.name}>
-                      <motion.img
-                        src={URL.createObjectURL(file)}
-                        alt={file.name}
-                        className="rounded-md w-16"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{
-                          y: -10,
-                          scale: 1.1,
-                          opacity: 0,
-                          transition: { duration: 0.2 },
-                        }}
-                      />
-                    </div>
-                  ) : file.type.startsWith("text") ? (
-                    <motion.div
-                      key={file.name}
-                      className="text-[8px] leading-1 w-28 h-16 overflow-hidden text-zinc-500 border p-2 rounded-lg bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{
-                        y: -10,
-                        scale: 1.1,
-                        opacity: 0,
-                        transition: { duration: 0.2 },
-                      }}
-                    >
-                      <TextFilePreview file={file} />
-                    </motion.div>
-                  ) : null
+          messages.map((message, index) => (
+            <motion.div
+              key={message.id}
+              className={`flex items-start space-x-4 ${index === 0 ? "pt-4" : ""}`}
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+            >
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                {message.role === "assistant" ? (
+                  <BotIcon />
+                ) : (
+                  <UserIcon />
                 )}
               </div>
-            )}
-          </AnimatePresence>
 
-          {/* Hidden file input */}
-          <input
-            type="file"
-            multiple
-            accept="image/*,text/*"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileChange}
-          />
 
-          <div className="flex items-center w-full md:max-w-[500px] max-w-[calc(100dvw-32px)] bg-zinc-100 dark:bg-zinc-700 rounded-full px-4 py-2">
-            {/* Upload Button */}
-            <button
-              type="button"
-              onClick={handleUploadClick}
-              className="text-zinc-500 dark:text-zinc-300 hover:text-zinc-700 dark:hover:text-zinc-100 focus:outline-none mr-3"
-              aria-label="Upload Files"
-            >
-              <span className="w-5 h-5">
-                <AttachmentIcon aria-hidden="true" />
-              </span>
-            </button>
-
-            {/* Message Input */}
-            <input
-              ref={inputRef}
-              className="bg-transparent flex-grow outline-none text-zinc-800 dark:text-zinc-300 placeholder-zinc-400"
-              placeholder="Send a message..."
-              value={input}
-              onChange={handleInputChange}
-              onPaste={handlePaste}
+              <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+  <Markdown>{message.content}</Markdown>
+  <div className="mt-2 flex flex-wrap gap-2">
+      {message.experimental_attachments?.map((attachment) =>
+        attachment.contentType?.startsWith("image") ? (
+          <button
+            key={attachment.name}
+            onClick={() => setSelectedImage(attachment.url)}
+            className="rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <img
+              src={attachment.url}
+              alt={attachment.name}
+              className="w-40 h-40 object-cover transition-transform duration-300 ease-in-out hover:scale-105"
             />
+          </button>
+        ) : attachment.contentType?.startsWith("text") ? (
+          <div
+            key={attachment.name}
+            className="text-xs w-40 h-24 overflow-hidden text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 p-2 rounded-md bg-gray-50 dark:bg-gray-800"
+          >
+            {getTextFromDataUrl(attachment.url)}
           </div>
-        </form>
-      </div>
+        ) : null
+      )}
+
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-3xl w-full p-0">
+          <div className="relative">
+            <img
+              src={selectedImage || ''}
+              alt="Enlarged view"
+              className="w-full h-auto"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2"
+              onClick={() => setSelectedImage(null)}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+
+  {/* Check if the content contains a code block */}
+  {/\`\`\`/.test(message.content) && (
+    <button
+      onClick={() => downloadYAMLFile(message.content)}
+      className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
+    >
+      Download Code Block as YAML
+    </button>
+  )}
+</div>
+
+
+
+
+            </motion.div>
+          ))
+        ) : (
+          <motion.div
+            className="text-center py-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <h2 className="text-2xl font-bold mb-4">Network Buddy</h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              This is an AI assistant that allows for the input of text files as well as images to return a YAML file related to networking.
+            </p>
+          </motion.div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <form
+        className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
+        onSubmit={(event) => {
+          const options = files ? { experimental_attachments: files } : {}
+          handleSubmit(event, options)
+          setFiles(null)
+        }}
+      >
+        <AnimatePresence>
+          {files && files.length > 0 && (
+            <motion.div
+              className="flex flex-wrap gap-2 mb-2"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {Array.from(files).map((file) =>
+                file.type.startsWith("image") ? (
+                  <img
+                    key={file.name}
+                    src={URL.createObjectURL(file)}
+                    alt={file.name}
+                    className="w-16 h-16 object-cover rounded-md"
+                  />
+                ) : file.type.startsWith("text") ? (
+                  <div
+                    key={file.name}
+                    className="w-16 h-16 text-[8px] leading-tight overflow-hidden text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 p-1 rounded-md bg-gray-50 dark:bg-gray-800"
+                  >
+                    <TextFilePreview file={file} />
+                  </div>
+                ) : null
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <input
+          type="file"
+          multiple
+          accept="image/*,text/*"
+          ref={fileInputRef}
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        <div className="flex items-center space-x-2">
+          <Button
+            type="button"
+            onClick={handleUploadClick}
+            variant="outline"
+            size="icon"
+            className="flex-shrink-0"
+          >
+            <AttachmentIcon />
+          </Button>
+          <Button
+        type="button"
+        onClick={startSpeechRecognition}
+        variant="outline"
+        size="icon"
+        className="flex-shrink-0"
+        disabled={!SpeechRecognition || isRecognizing}
+      >
+        <MicIcon />
+      </Button>
+      <Input
+        ref={inputRef}
+        className="flex-1"
+        placeholder="Send a message..."
+        value={input}
+        onChange={handleInputChange}
+        onPaste={(e) => handlePaste(e)}
+      />
+          <Button type="submit" disabled={isLoading}>
+            Send
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
 }

@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Metadata } from "next";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "../theme-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ai-sdk-preview-attachments.vercel.dev"),
@@ -15,10 +16,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
       <body>
+        
         <Toaster position="top-center" richColors />
         {children}
       </body>
+      </ThemeProvider>
     </html>
   );
 }
